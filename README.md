@@ -7,6 +7,15 @@ You can use it on Mac, Linux & Windows (using Git Bash). And collect timing metr
 
 Pro tip: you can check out the coming [3.0](https://github.com/sitespeedio/sitespeed.io/tree/3.0-wip) version, it is written in nodejs and about 100% easier to extend.
 
+What's different with sitespeedio/sitespeed.io
+=============
+Just three things are different.
+ * Wait few seconds for single page website.
+ * Custom Cookie support. 
+   ex) ./bin/sitespeed.io -K '[{"name":"session","value": "'$SESSION'","domain":"'$URL'"},{"name":"visited","value": true,"domain":"'$URL'"}]'
+ * Responsive website screenshot.
+   Take default screenshot + iphone, nexus, ipad screenshot in one test.
+
 Run on Mac OS X
 =============
 ```bash
