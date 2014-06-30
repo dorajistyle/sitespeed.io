@@ -10,11 +10,12 @@ Pro tip: you can check out the coming [3.0](https://github.com/sitespeedio/sites
 What's different with sitespeedio/sitespeed.io
 =============
 Just three things are different.
- * Wait few seconds for single page website.
- * Custom Cookie support.
+1. Wait few seconds for single page website.
+1. Custom Cookie support.
    ```bash
    $ ./bin/sitespeed.io -K '[{"name":"session","value": "'$SESSION'","domain":"'$URL'"},{"name":"visited","value": true,"domain":"'$URL'"}]'
- * Responsive website screenshot.
+   ```
+1. Responsive website screenshot.
    Take default screenshot and iphone, nexus also ipad screenshot in one screenshot page.
 
 Run on Mac OS X
