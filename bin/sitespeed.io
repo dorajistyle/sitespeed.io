@@ -73,7 +73,7 @@ PROXY_HOST=
 ## The type of proxy
 PROXY_TYPE=http
 ## The viewport of the browser, default is 1280*800
-VIEWPORT=1280x800
+VIEWPORT=1366x768
 ## The name of the analyze
 TEST_NAME=
 ## The columns showed in the table on the detailed summary page
@@ -95,6 +95,8 @@ MAX_FILENAME_LENGTH=245
 SCREENSHOT=false
 ## The browser to use. A comma separated list of browsers
 BROWSERS=
+## The browser cookie for phantomjs.
+COOKIE=
 ## The default number of runs
 NUMBER_OF_RUNS="3"
 ## Error log
@@ -205,7 +207,7 @@ fi
 #*******************************************************
 function get_input {
 # Set options
-while getopts “hu:d:f:s:o:m:b:n:p:r:z:x:g:t:a:v:y:l:c:j:e:i:q:k:V:B:C:” OPTION
+while getopts “hu:d:f:s:o:m:b:n:p:r:z:x:g:t:a:v:y:l:c:j:e:i:q:k:K:V:B:C” OPTION
 do
      case $OPTION in
          h)
@@ -236,6 +238,7 @@ do
          c)BROWSERS=$OPTARG;;
          B)BASIC_AUTH_USER_PASSWORD=$OPTARG;;
          C)CDN_LIST=$OPTARG;;
+         K)COOKIE=$OPTARG;;
          V)
              echo $SITESPEED_VERSION
              exit  0
@@ -416,6 +419,13 @@ fi
 if [ "$CDN_LIST" != "" ]
 then
     CDN="--cdns $CDN_LIST"
+fi
+
+if [ "$COOKIE" != "" ]
+then
+    COOKIE=$COOKIE
+else
+    COOKIE=''
 fi
 
 }
@@ -768,6 +778,24 @@ function take_screenshots() {
 
 echo 'Create all png:s'
 mkdir $REPORT_IMAGE_PAGES_DIR
+
+USER_AGENTS=("" "iphone" "nexus" "ipad")
+local filenames=
+for UA in "${USER_AGENTS[@]}"
+do
+if [[ "$UA" == "iphone" ]]
+then
+  USER_AGENT="$IPHONE_IO6_AGENT"
+  VIEWPORT=$IPHONE5_VIEWPORT
+elif [[ "$UA" == "nexus" ]]
+then
+  USER_AGENT="$NEXUS_4_AGENT"
+  VIEWPORT=$NEXUS_VIEWPORT
+elif [[ "$UA" == "ipad" ]]
+then
+  USER_AGENT="$IPAD_IO6_AGENT"
+  VIEWPORT=$IPAD_VIEWPORT
+fi
 local width=$(echo $VIEWPORT | cut -d'x' -f1)
 local height=$(echo $VIEWPORT | cut -d'x' -f2)
 local urls=
@@ -780,16 +808,16 @@ local runs=0
 for url in "${URLS[@]}"
   do
     local imagefilename=$(get_filename $url $runs)
-    echo "Creating screenshot for $url $REPORT_IMAGE_PAGES_DIR/$imagefilename.png "
-    phantomjs --ssl-protocol=any --ignore-ssl-errors=yes $PROXY_PHANTOMJS $DEPENDENCIES_DIR/screenshot.js "$url" "$REPORT_IMAGE_PAGES_DIR/$imagefilename.png" $width $height "$USER_AGENT" true $BASIC_AUTH_USER_PASSWORD > /dev/null 2>&1
+    echo "Creating screenshot for $url $REPORT_IMAGE_PAGES_DIR/$imagefilename-$UA.png"
+    phantomjs --ssl-protocol=any --ignore-ssl-errors=yes $PROXY_PHANTOMJS $DEPENDENCIES_DIR/screenshot.js "$url" "$REPORT_IMAGE_PAGES_DIR/$imagefilename-$UA.png" $width $height "$USER_AGENT" true "$COOKIE" > /dev/null 2>&1
     if [ "$PNGCRUSH_EXIST" = "true" ]
       then
-        pngcrush -q $REPORT_IMAGE_PAGES_DIR/$imagefilename.png $REPORT_IMAGE_PAGES_DIR/$imagefilename-c.png
-        mv $REPORT_IMAGE_PAGES_DIR/$imagefilename-c.png $REPORT_IMAGE_PAGES_DIR/$imagefilename.png
+        pngcrush -q $REPORT_IMAGE_PAGES_DIR/$imagefilename-$UA.png $REPORT_IMAGE_PAGES_DIR/$imagefilename-$UA-c.png
+        mv $REPORT_IMAGE_PAGES_DIR/$imagefilename-$UA-c.png $REPORT_IMAGE_PAGES_DIR/$imagefilename-$UA.png
     fi
     local urls+="$url"
     local urls+="@"
-    local imagenames+="$imagefilename"
+    local imagenames+="$imagefilename-$UA"
     local imagenames+="@"
     local runs=$[$runs+1]
   done
@@ -797,9 +825,20 @@ local vp="-Dcom.soulgalore.velocity.key.viewport=$VIEWPORT"
 local url_list="-Dcom.soulgalore.velocity.key.urls=$urls"
 local image_list="-Dcom.soulgalore.velocity.key.images=$imagenames"
 echo 'Create the screenshots.html'
-"$JAVA" -Xmx"$JAVA_HEAP"m -Xms"$JAVA_HEAP"m "$TEST_NAME" "$vp" "$url_list" "$image_list" "$SCREENSHOT" "$SHOW_ERROR_URLS" "$VELOCITY_TEMPLATES_HOME" -jar $DEPENDENCIES_DIR/$VELOCITY_JAR $REPORT_DATA_DIR/summary.xml $VELOCITY_DIR/screenshots.vm $PROPERTIES_DIR/screenshots.properties $REPORT_DIR/screenshots.html 2>&1 |tee $OUTPUT  >>$REPORT_DATA_DIR/error.log || exit 1
-"$JAVA" -jar $DEPENDENCIES_DIR/$HTMLCOMPRESSOR_JAR --type html --compress-css --compress-js -o $REPORT_DIR/screenshots.html $REPORT_DIR/screenshots.html
+"$JAVA" -Xmx"$JAVA_HEAP"m -Xms"$JAVA_HEAP"m "$TEST_NAME" "$vp" "$url_list" "$image_list" "$SCREENSHOT" "$SHOW_ERROR_URLS" "$VELOCITY_TEMPLATES_HOME" -jar $DEPENDENCIES_DIR/$VELOCITY_JAR $REPORT_DATA_DIR/summary.xml $VELOCITY_DIR/screenshots.vm $PROPERTIES_DIR/screenshots.properties $REPORT_DIR/screenshots-$UA.html 2>&1 |tee $OUTPUT  >>$REPORT_DATA_DIR/error.log || exit 1
+"$JAVA" -jar $DEPENDENCIES_DIR/$HTMLCOMPRESSOR_JAR --type html --compress-css --compress-js -o $REPORT_DIR/screenshots-$UA.html $REPORT_DIR/screenshots-$UA.html
 
+filenames+="$REPORT_DIR"/screenshots-$UA.html
+filenames+=" "
+done
+# cat $filenames > "$REPORT_DIR/screenshots.html"
+for filename in $filenames; do
+    cat "$filename"
+done > "$REPORT_DIR"/screenshots.html
+cat $REPORT_DIR/screenshots.html | perl -ne 's/\<footer\>(.*?)\<\/nav\>//g; print;' > $REPORT_DIR/screenshots2.html
+rm $REPORT_DIR/screenshots.html
+rm $REPORT_DIR/screenshots-*.html
+mv $REPORT_DIR/screenshots2.html $REPORT_DIR/screenshots.html
 }
 
 #*******************************************************
@@ -841,6 +880,7 @@ OPTIONS:
    -V      Show the version of sitespeed.io
    -B      Basic auth user & password <username:password> [optional]
    -C     A comma separated list of additional CDNs [optional]
+   -K      The cookie of phantomjs ex) '{"name":"cookie_name","value":"cookie_value","domain":"localhost"}' [optional]
 EOF
 }
 

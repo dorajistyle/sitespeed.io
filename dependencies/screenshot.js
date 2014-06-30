@@ -1,9 +1,12 @@
 var page = require('webpage').create(),
-    address, output, size, w, h, agent, full,basicauth,auth;
-
+    address, output, size, w, h, agent, full, cookie;
+var resourceWait  = 5e3,
+    maxRenderWait = 3e4,
+    count         = 0,
+    renderTimeout;
 
 if (phantom.args.length < 5 || phantom.args.length > 7) {
-    console.log('Usage: screenshot.js URL filename width height user-agent full basic:auth');
+    console.log('Usage: screenshot.js URL filename width height user-agent full cookie');
     phantom.exit();
 } else {
     address = phantom.args[0];
@@ -12,28 +15,56 @@ if (phantom.args.length < 5 || phantom.args.length > 7) {
     h = phantom.args[3];
     agent = phantom.args[4];
     full = phantom.args[5];
-    basicauth = phantom.args[6];
-    
-    if (basicauth) {
-        auth = basicauth.split(":");
-        page.settings.userName = auth[0];
-        page.settings.password = auth[1];
-    }
-    
+    cookie_str = phantom.args[6];
+    try{
+      cookie = JSON.parse(cookie_str,function(k, v){
+        return v;
+      });
+       console.log('cookie len',cookie.length);
+      if(cookie.length > 1) {
+          for(i in cookie) {
+              console.log('each cookie key', i);
+              console.log('each cookie val', cookie[i]);
+              phantom.addCookie(cookie[i]);
+          }
+      }
 
+
+    } catch (e) {
+      console.log('Error - '+ e);
+      cookie = undefined;
+    }
+    //if(cookie != undefined) phantom.addCookie(cookie);
+
+    function doClip() {
+        if (full != 'true')
+                page.clipRect = { left: 0, top: 0, width: w, height: h };
+			page.render(output);
+			phantom.exit();
+    }
+
+    page.onResourceRequested = function (req) {
+        count += 1;
+        clearTimeout(renderTimeout);
+    };
+ 
+    page.onResourceReceived = function (res) {
+        if (!res.stage || res.stage === 'end') {
+            count -= 1;
+	    if (count === 0) {
+	        renderTimeout = setTimeout(doClip, resourceWait);
+	    }
+	}
+    }; 
     page.viewportSize = { width: w , height: h};
     page.settings.userAgent = agent;  
     page.open(address, function (status) {
 	    if (status !== 'success') {
 		console.log('Unable to load the address!');
 	    } else {
-		window.setTimeout(function () {
-			
-            if (full != 'true')
-                page.clipRect = { left: 0, top: 0, width: w, height: h };
-			page.render(output);
-			phantom.exit();
-		    }, 200);
+		window.setTimeout(function (){
+            	doClip();
+        	}, maxRenderWait);
 	    }
 	});
 }
