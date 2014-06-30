@@ -13,9 +13,9 @@ Just three things are different.
  1. Wait few seconds for single page website.
  1. Custom Cookie support.
 
-        ```bash
-        $ ./bin/sitespeed.io -K '[{"name":"session","value": "'$SESSION'","domain":"'$URL'"},{"name":"visited","value": true,"domain":"'$URL'"}]'
-        ```
+ ```bash
+ $ ./bin/sitespeed.io -K '[{"name":"session","value": "'$SESSION'","domain":"'$URL'"},{"name":"visited","value": true,"domain":"'$URL'"}]'
+ ```
  1. Responsive website screenshot.
     * Take default screenshot and iphone, nexus also ipad screenshot in one screenshot page.
 
