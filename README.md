@@ -11,7 +11,7 @@ What's different with sitespeedio/sitespeed.io
 =============
 Just three things are different.
  1. Wait few seconds for single page website.
- 1. Custom Cookie support.
+ 1. Custom Cookie support. ex)
 
  ```bash
  $ ./bin/sitespeed.io -K '[{"name":"session","value": "'$SESSION'","domain":"'$URL'"},{"name":"visited","value": true,"domain":"'$URL'"}]'
